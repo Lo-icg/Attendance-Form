@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Attendance Form</title>
+    <link rel="icon" href="icctlogo.ico">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <img src="https://icct.edu.ph/wp-content/uploads/2019/01/logo-icct-final-01-1.png" alt="ICCT Logo" style="width: 250px; height: 55px;">
+    </header>
+
+    <div id="formPane">
+        <form>
+            <div style="text-align: center;">
+                <p id="label">Attendance Form</p>
+                <p id="error-message"></p> 
+                <p id="success-message"></p>
+                <ul>
+                    <li>
+                        <input type="text" name="fname" id="fname" placeholder="First Name" style="width: 150px;">
+                        <input type="text" name="lname" id="lname" placeholder="Last Name" style="width: 150px;"><br>
+                        <input type="text" id="studNum" name="studNum" placeholder="Student Number" style="width: 310px;"><br>
+                        <input type="text" id="subcode" name="subcode" placeholder="Subject Code" style="width: 310px;"><br>
+                        <input type="text" id="email" name="email" placeholder="E-mail" style="width: 310px;"><br>
+                    </li>
+                </ul>
+
+                <input type="submit" value="Submit">
+                <a id="download-btn"><img src="downloadbtn.png" width="35px" alt="Download data" style="margin-right: 5px;"></a>
+            </div>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4PJv1Yoai47wypPp6taqBqP_YPbXo0Ug",
+            authDomain: "log-in-form-168b0.firebaseapp.com",
+            projectId: "log-in-form-168b0",
+            storageBucket: "log-in-form-168b0.appspot.com",
+            messagingSenderId: "1003330795082",
+            appId: "1:1003330795082:web:7bc99c8646908609a398b3",
+            measurementId: "G-0DJSZN2X99",
+            databaseURL: "https://log-in-form-168b0-default-rtdb.firebaseio.com/"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const form = document.querySelector("form");
+        const downloadBtn = document.getElementById("download-btn");
+
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+
+            const fname = document.getElementById("fname").value;
+            const lname = document.getElementById("lname").value;
+            const studNum = document.getElementById("studNum").value;
+            const subcode = document.getElementById("subcode").value;
+            const email = document.getElementById("email").value;
+
+            const errorMessage = document.getElementById("error-message");
+            const successMessage = document.getElementById("success-message");
+
+            if (!fname || !lname || !studNum || !subcode || !email) {
+                errorMessage.textContent = "Please fill in all fields.";
+                errorMessage.style.display = "block";
+                errorMessage.classList.remove("fade-out");
+
+                setTimeout(() => {
+                    errorMessage.classList.add("fade-out");
+                }, 500);
+
+                setTimeout(() => {
+                    errorMessage.style.display = "none";
+                    errorMessage.classList.remove("fade-out");
+                }, 1000);
+
+                return;
+            }
+
+            errorMessage.style.display = "none";
+
+            const studentId = studNum || Date.now();
+
+            set(ref(database, 'students/' + studentId), {
+                firstName: fname,
+                lastName: lname,
+                studentNumber: studNum,
+                subjectCode: subcode,
+                email: email
+            })
+                .then(() => {
+                    successMessage.textContent = "Recorded";
+                    successMessage.style.display = "block";
+                    successMessage.classList.remove("fade-out");
+
+                    setTimeout(() => {
+                        successMessage.classList.add("fade-out");
+                    }, 500);
+
+                    setTimeout(() => {
+                        successMessage.style.display = "none";
+                        successMessage.classList.remove("fade-out");
+                    }, 5000);
+                    form.reset();
+                })
+                .catch((error) => {
+                    console.error("Error saving data:", error);
+                });
+        });
+
+        downloadBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const dbRef = ref(database, 'students/');
+            const snapshot = await get(dbRef);
+
+            if (snapshot.exists()) {
+                const students = [];
+
+                snapshot.forEach(childSnapshot => {
+                    const data = childSnapshot.val();
+                    students.push({
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        studentNumber: data.studentNumber,
+                        subjectCode: data.subjectCode,
+                        email: data.email
+                    });
+                });
+
+                const ws = XLSX.utils.json_to_sheet(students);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Students");
+                XLSX.writeFile(wb, "students_data.xlsx");
+            } else {
+                alert("No data available.");
+            }
+        });
+    </script>
+
+</body>
+
+</html>
